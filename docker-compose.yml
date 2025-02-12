@@ -1,0 +1,23 @@
+version: "3.7"
+services:
+  status-monitor:
+    build: .
+    image: status-monitor-node:latest
+    container_name: status-monitor-node
+    ports:
+      - "8076:8076"
+    volumes:
+      - ./services.json:/app/services.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+#    environment:
+      # Example: set cache to 2 minutes (120000 ms)
+      # CACHE_TTL: "120000"
+      #
+      # You can also override the default port here if needed:
+      # PORT: "8080"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+# docker compose build && docker compose up -d

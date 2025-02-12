@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Status Monitor</title>
+    <!-- Bootstrap 5 CSS -->
+    <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+    />
+    <!-- Bootstrap Icons for status icons, toggle icons, etc. -->
+    <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css"
+            rel="stylesheet"
+    />
+    <style>
+        /* Light/Dark Mode Styling */
+        body {
+            background-color: #f8f9fa;
+            color: #212529;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body.dark-mode {
+            background-color: #121212 !important;
+            color: #f8f9fa !important;
+        }
+
+        body.dark-mode .navbar {
+            background-color: #1b1e21 !important;
+        }
+
+        body.dark-mode .card {
+            background-color: #2c2f33;
+            color: #f8f9fa;
+        }
+
+        body.dark-mode .btn.btn-primary {
+            background-color: #0062cc;
+            border-color: #0056b3;
+        }
+
+        body.dark-mode .btn-outline-light {
+            color: #f8f9fa;
+            border-color: #f8f9fa;
+            background-color: #212529;
+        }
+
+        body.dark-mode .alert-info {
+            background-color: #394047;
+            border-color: #4b5258;
+            color: #d1d1d1;
+        }
+
+        /* Ensure uptime and last update are visible in dark mode */
+        body.dark-mode .text-muted {
+            color: #cfcfcf !important;
+        }
+
+        body.dark-mode #lastUpdated {
+            color: #ffffff !important;
+        }
+
+        body.dark-mode #countdownSec {
+            color: #ffcc00 !important;
+        }
+
+        /* Compact card layout */
+        .service-card {
+            margin: 5px;
+            transition: box-shadow 0.2s ease-in-out;
+        }
+
+        .service-card:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Status badge and uptime aligned in a single row */
+        .status-uptime {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            margin-top: 6px;
+        }
+
+        /* Adjust the badge width so it does not stretch too much */
+        .status-uptime .status-badge {
+            flex-shrink: 0;
+            min-width: 70px;
+            max-width: 90px;
+            padding: 4px 8px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        /* Keep uptime text flexible and aligned */
+        .status-uptime .uptime-text {
+            flex-grow: 1;
+            text-align: right;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        /* Improve readability in dark mode */
+        body.dark-mode .status-uptime .uptime-text {
+            color: #cfcfcf !important;
+        }
+
+        /* Service Details Styling */
+        .service-details {
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        .service-details .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+
+        /* Total Metrics Styling */
+        .total-metrics {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body.dark-mode .total-metrics {
+            background-color: #1b1e21;
+        }
+
+        .total-metrics h5 {
+            margin-bottom: 15px;
+        }
+
+        .total-metrics .metric-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #ced4da;
+        }
+
+        .total-metrics .metric-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 576px) {
+            #statusSummary {
+                margin-top: 10px;
+            }
+
+            #countdownSec,
+            #lastUpdated {
+                margin-top: 5px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light">
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
+    <div class="container-fluid">
+        <span class="navbar-brand">Status Monitor</span>
+        <!-- Dark/Light Mode Toggle Button -->
+        <button
+                class="btn btn-sm btn-outline-light ms-auto"
+                id="darkModeBtn"
+                onclick="toggleDarkMode()"
+                type="button"
+        >
+            . <i class="bi bi-moon-stars"></i> Dark Mode
+        </button>
+    </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="container-fluid mb-4 px-5">
+    <!-- Top Row: Force Refresh, Up/Total, Countdown, Last Update -->
+    <div class="row align-items-center gx-3 gy-2">
+        <!-- Force Refresh Button -->
+        <div class="col-auto">
+            <button class="btn btn-primary" onclick="renderDashboard(true)">
+                <i class="bi bi-arrow-repeat"></i> Force Refresh
+            </button>
+        </div>
+
+        <!-- "Up/Total" Summary -->
+        <div class="col-auto" id="statusSummary"></div>
+
+        <!-- Auto Refresh Countdown + Last Update -->
+        <div class="col-auto ms-auto text-end">
+            <div class="small">
+                Auto Refresh in <span id="countdownSec">30</span>s
+            </div>
+            <div class="small text-muted" id="lastUpdated">
+                Last Update: —
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Metrics Section -->
+    <div class="total-metrics">
+        <h5>System Overview</h5>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="metric-item">
+                    <span>Total CPU Usage:</span>
+                    <span id="totalCPUPerc">—</span>
+                </div>
+                <div class="metric-item">
+                    <span>Total Memory Usage:</span>
+                    <span id="totalMemUsage">—</span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="metric-item">
+                    <span>Total Memory Percentage:</span>
+                    <span id="totalMemPerc">—</span>
+                </div>
+                <div class="metric-item">
+                    <span>Total Memory Capacity:</span>
+                    <span id="totalMemCapacity">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Cards Grid -->
+    <div class="row mt-3" id="dashboard"></div>
+</div>
+
+<!-- Bootstrap Bundle JS -->
+<script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+></script>
+
+<script>
+    const REFRESH_INTERVAL = 30;
+    let countdown = REFRESH_INTERVAL;
+    let isDarkMode = false;
+
+    function toggleDarkMode() {
+        isDarkMode = !isDarkMode;
+        document.body.classList.toggle('dark-mode');
+        document.getElementById('darkModeBtn').innerHTML = isDarkMode
+            ? '<i class="bi bi-sun"></i> Light Mode'
+            : '<i class="bi bi-moon-stars"></i> Dark Mode';
+    }
+
+    async function fetchStatusData(forceRefresh = false) {
+        const url = '/api/status' + (forceRefresh ? '?force=true' : '');
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch status from server');
+        return response.json();
+    }
+
+    async function renderDashboard(forceRefresh = false) {
+        try {
+            const data = await fetchStatusData(forceRefresh);
+
+            // Update Status Summary
+            document.getElementById('statusSummary').innerHTML = `
+          <span class="fs-5">
+            Up/Total: <strong>${data.up_healthy_count ?? 0}</strong> /
+            <strong>${data.expected_services_count ?? 0}</strong>
+          </span>
+        `;
+
+            // Update Total Metrics
+            document.getElementById('totalCPUPerc').textContent = data.totalCPUPerc ?? '—';
+            document.getElementById('totalMemUsage').textContent = data.totalMemUsage ?? '—';
+            document.getElementById('totalMemPerc').textContent = data.totalMemPerc ?? '—';
+            document.getElementById('totalMemCapacity').textContent = data.totalMemCapacity ?? '—';
+
+            // Update Service Cards
+            const dashboardEl = document.getElementById('dashboard');
+            let html = '';
+            data.services.forEach((svc) => {
+                let badgeClass = 'bg-secondary';
+                let iconHtml = '<i class="bi bi-question-circle text-secondary"></i>';
+
+                if (svc.status === 'up' || svc.status === 'healthy') {
+                    badgeClass = 'bg-success';
+                    iconHtml = '<i class="bi bi-check-circle text-success"></i>';
+                } else if (svc.status === 'down' || svc.status === 'unhealthy') {
+                    badgeClass = 'bg-danger';
+                    iconHtml = '<i class="bi bi-exclamation-circle text-danger"></i>';
+                }
+
+                html += `
+            <div class="col-sm-6 col-md-4 col-lg-3">
+              <div class="card service-card shadow-sm">
+                <div class="card-body">
+                  <h6 class="card-title d-flex justify-content-between align-items-center">
+                    <span>${svc.name}</span>
+                    ${iconHtml}
+                  </h6>
+                  <div class="status-uptime">
+                    <span class="badge ${badgeClass} status-badge">${svc.status}</span>
+                    <span class="uptime-text">${svc.uptime ? svc.uptime : '--'}</span>
+                  </div>
+                  <div class="service-details">
+                    <div class="detail-item">
+                      <span><i class="bi bi-cpu"></i> :</span>
+                      <span>${svc.CPUPerc}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span><i class="bi bi-memory"></i> :</span>
+                      <span>${svc.MemUsage} (${svc.MemPerc})</span>
+                    </div>
+                    <div class="detail-item">
+                      <span><i class="bi bi-cloud-download"></i> :</span>
+                      <span>${svc.NetIO}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+            });
+
+            dashboardEl.innerHTML = html;
+
+            // Reset Countdown and Update Last Updated Time
+            countdown = REFRESH_INTERVAL;
+            document.getElementById('lastUpdated').textContent = `Last Update: ${new Date().toLocaleTimeString([], {hour12: false})}`;
+
+        } catch (err) {
+            console.error('Error rendering dashboard:', err);
+            alert('Failed to load service status. Check console for details.');
+        }
+    }
+
+    function startCountdown() {
+        setInterval(() => {
+            countdown = countdown > 0 ? countdown - 1 : REFRESH_INTERVAL;
+            document.getElementById('countdownSec').textContent = countdown;
+            if (countdown === 0) renderDashboard();
+        }, 1000);
+    }
+
+    // Initial Render and Start Countdown
+    renderDashboard();
+    startCountdown();
+</script>
+</body>
+</html>
