@@ -84,10 +84,9 @@ jobs:
         shell: bash
         run: |
           new_version="${{ steps.bump_version.outputs.new_version }}"
-          # Tag for Docker Hub
-          docker_hub_image="${{ secrets.DOCKERHUB_USERNAME }}/status-monitor-node:${new_version}"
-          # Tag for GitHub Container Registry (ghcr.io)
-          ghcr_image="ghcr.io/${{ github.repository_owner }}/status-monitor-node:${new_version}"
+          repo_name="${{ github.event.repository.name }}"
+          docker_hub_image="${{ secrets.DOCKERHUB_USERNAME }}/${repo_name}:${new_version}"
+          ghcr_image="ghcr.io/${{ github.repository_owner }}/${repo_name}:${new_version}"
 
           docker build -t "$docker_hub_image" -t "$ghcr_image" .
           docker push "$docker_hub_image"
